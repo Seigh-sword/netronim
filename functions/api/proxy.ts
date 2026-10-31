@@ -1,6 +1,8 @@
 interface Env { PROXY_ENABLED?: string; PROXY_ALLOWED_HOSTS?: string }
 const MAX_BYTES = 5 * 1024 * 1024;
-const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff' } });
+const json = (value: unknown, status = 200, extra: Record<string,string> = {}) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff', ...extra } });
+const pageCache = new Map<string, { at: number; payload: Record<string, unknown> }>();
+const CACHE_MS = 60_000;
 import { publicIP } from './network-security';
 export { publicIP } from './network-security';
 async function validateURL(raw: string, env: Env): Promise<URL> {
@@ -55,7 +57,7 @@ export const onRequestGet: PagesFunction<Env> = async ({request,env}) => {
     if(!response)throw new Error('No response from website.');
     if(mode==='ping'){await response.body?.cancel();return json({status:response.status,latency:Date.now()-start,url:url.href});}
     const type=response.headers.get('Content-Type')||'application/octet-stream';
-    if(!response.ok)return json({error:`The website returned HTTP ${response.status}.`,url:url.href},502);
+    if(!response.ok){ if(response.status===429){ const retry=response.headers.get('Retry-After')||undefined; const hit=pageCache.get(url.href); if(hit) return json({ ...hit.payload, cached:true, warning:'The site rate-limited the proxy; served a recent cached copy.' }); return json({error:'The website returned HTTP 429 (rate limited).',url:url.href,retryAfter:retry},429, retry?{'Retry-After':retry}:{}); } return json({error:`The website returned HTTP ${response.status}.`,url:url.href},502); }
     if(isRaw){
       if(/text\/css/i.test(type)){const css=await boundedText(response);return new Response(rewriteCSS(css,url.href,endpoint),{headers:{'Content-Type':'text/css; charset=utf-8','Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff','Content-Security-Policy':"default-src 'none'; style-src 'unsafe-inline'; sandbox"}});}
       if(Number(response.headers.get('Content-Length')||0)>MAX_BYTES){await response.body?.cancel();throw new Error('This resource exceeds the 5 MB proxy limit.');}
@@ -64,7 +66,10 @@ export const onRequestGet: PagesFunction<Env> = async ({request,env}) => {
       return new Response(bytes,{headers:{'Content-Type':safeType,'Cache-Control':'public, max-age=300','X-Content-Type-Options':'nosniff','Content-Disposition':'attachment','Content-Security-Policy':"default-src 'none'; sandbox"}});
     }
     if(!/text\/html|application\/xhtml\+xml/i.test(type))return json({download:true,url:`${endpoint}?raw=1&url=${encodeURIComponent(url.href)}`,mime:type,title:url.pathname.split('/').pop()||url.hostname});
+    const cached = pageCache.get(url.href); if (cached && Date.now() - cached.at < CACHE_MS) return json({ ...cached.payload, cached: true });
     const html=await boundedText(response);const title=html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.replace(/<[^>]*>/g,'').trim()||url.hostname;
-    return json({html:rewriteHTML(html,url.href,endpoint),url:url.href,title,contentType:type});
+    const payload = { html: rewriteHTML(html, url.href, endpoint), url: url.href, title, contentType: type };
+    pageCache.set(url.href, { at: Date.now(), payload }); if (pageCache.size > 80) { const oldest = [...pageCache.entries()].sort((a,b)=>a[1].at-b[1].at)[0]; if (oldest) pageCache.delete(oldest[0]); }
+    return json(payload);
   }catch(error){return json({error:error instanceof Error?error.message:'The website could not be loaded.',hint:'The site may be offline, block proxy access, or require a full browser. Try its mobile or text version.'},502);}
 };

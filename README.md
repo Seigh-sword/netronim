@@ -33,8 +33,8 @@ Node 22+ is recommended. The production build writes `dist/`; generated WASM bin
 - **Process manager** with launch, focus, cooperative suspend/resume, kill, resource estimates, and a configurable process limit.
 - **Window manager / CSS compositor**: drag, resize, minimize, maximize/restore, edge snap, tiling, focus/z-order, session restore, two workspaces, UI scaling.
 - **Event bus, package manager, update manager, media pipeline, RendyGL graphics abstraction**.
-- **Desktop shell**: wallpaper, draggable icons, context menus, taskbar, Start menu/search, tray clock, volume, brightness, battery (when the browser exposes it), notifications, update indicator.
-- **Settings**: display/theme/accent/scaling, sound, network/proxy, app install/remove/export, user/backup, storage, updates.
+- **Desktop shell**: native `.nif` wallpaper, draggable desktop shortcuts, drag apps from Start to desktop/taskbar, pin/unpin/remove/uninstall from context menus, glass taskbar with opacity/blur/icon-size/alignment/auto-hide/position controls, Start search, tray, notifications, update indicator.
+- **Settings**: display/theme/accent/scaling, Desktop & taskbar customization, desktop XML import/export, sound, network/proxy, app install/remove/export, user/backup, storage, updates.
 
 ### 29 built-in apps
 
@@ -48,7 +48,15 @@ System Files, Settings, Terminal, NetBrowse, Task Manager, Update Manager, Noteb
 
 ### NPK packages
 
-`Archive Studio` can inspect, create, install, export, and remove packages. Terminal supports `install`, `uninstall`, `apps`, and `open`.
+`Archive Studio` can inspect, create, install, export, and remove packages. Terminal supports `install`, `uninstall`, `apps`, and `open`. A Python packer is included for CLI/build pipelines:
+
+```bash
+python tools/npk.py pack prism.npk --wasm public/wasm/prism.wasm --id prism-flow --name "Prism Flow" --type rendygl
+python tools/npk.py inspect prism.npk
+python tools/npk.py unpack prism.npk ./extracted
+```
+
+NPK is a zip-like container, not a bare WASM file: it carries `_META/manifest.json`, changelog, `_HEADERS/api.xml`, associations, IPC metadata, and the HTML/WASM entry plus assets.
 
 NPK1 layout:
 
@@ -90,9 +98,24 @@ A first-class browser shell with persisted history, environment, aliases, and wo
 
 ### NetBrowse and Weather
 
-NetBrowse is a tabbed reader browser with history, bookmarks, downloads, and a server-side proxy (`functions/api/proxy.ts`). It rewrites public HTML/CSS, disables remote scripts, blocks local/internal/metadata addresses, limits redirects/time/body size, and can download files into System Files. It is **not** a full remote browser: complex web apps, sign-in, DRM, and sites that block proxying may fail.
+NetBrowse has two modes. **Direct** embeds the live site in a browser frame so the site’s own JavaScript/CSS can run; it is the default for normal browsing. **Reader** uses the server-side proxy (`functions/api/proxy.ts`) to rewrite public HTML/CSS, disable remote scripts, block local/internal/metadata addresses, limit redirects/time/body size, cache briefly, and handle HTTP 429 more gracefully. Neither mode can bypass a site’s X-Frame-Options/CSP, CORS, DRM, or anti-bot rules; the UI offers the other mode and “open externally” instead of pretending those limits do not exist.
 
 Weather uses Cloudflare-cached Open-Meteo endpoints, with a direct browser fallback for static deployments. Geolocation is optional and permission-gated.
+
+### Desktop customization, XML, and ronim-js
+
+Settings → **Desktop & taskbar** exposes glass, opacity, blur, icon size, alignment, auto-hide, top/bottom position, tray/search/workspace toggles, desktop icon size/grid/labels, shortcut and pinned-app management. You can export/import the layout as safe XML:
+
+```xml
+<netronim-desktop version="1">
+  <taskbar position="bottom" glass="true" opacity="70" blur="30" iconSize="38" align="center" />
+  <desktop icons="true" labels="true" iconSize="52" grid="100" />
+  <shortcuts><app id="terminal" x="24" y="76" /></shortcuts>
+  <pinned><app id="files" /></pinned>
+</netronim-desktop>
+```
+
+Installed HTML5View apps can use the permission-gated `window.ronim` bridge / `public/sdk/ronim.js` (`desktop:read`, `desktop:write`, `apps:launch`, `apps:manage`). XML and ronim-js can change appearance/layout only; they cannot execute arbitrary OS code or change network/update endpoints.
 
 ### Updates
 
@@ -107,6 +130,10 @@ The repo includes:
 - `public/_headers`, `public/_redirects`, `public/sw.js` — caching, SPA fallback, offline app shell
 - `.github/workflows/ci.yml` — test + build
 - `.github/workflows/deploy.yml` — deploy on `main` or manual dispatch
+
+### Cloudflare dashboard (recommended)
+
+Connect the GitHub repo in the Cloudflare Pages dashboard and use the default build command `npm run build` with output directory `dist`. This does **not** require the GitHub Actions secrets below.
 
 ### Direct deploy
 
@@ -140,6 +167,12 @@ For local Wrangler development, copy `.dev.vars.example` to `.dev.vars`.
 ## Offline and persistence
 
 A production service worker precaches the app shell, hashed chunks, wallpapers, and WASM after the first visit (`scripts/build-sw.mjs` injects the build manifest). User data is **not** stored in the service worker cache; it lives in IndexedDB. Browser storage can still be cleared or evicted, so use **Settings → Users & backup → Export backup** regularly. “Request persistent storage” asks the browser not to evict the site automatically, but it is not a guarantee.
+
+## Troubleshooting
+
+- **HTTP 522 on `/favicon.svg` or wallpapers**: 522 means Cloudflare could not reach the origin. For Pages, make sure the deployment finished and you are visiting the Pages URL, not a proxied record pointing at a dead dev server. The favicon is also inlined in `index.html`, and the shipped wallpaper is now a native `.nif` WebP asset with an explicit `image/webp` header.
+- **NetBrowse HTTP 429**: the target site rate-limited the reader proxy. Use Direct mode, wait/retry, or open externally. The proxy now returns 429 honestly and can serve a recent cached copy.
+- **Blank Direct-mode page**: the site blocks embedding. Try Reader mode or open externally; a web app cannot override that site’s frame policy.
 
 ## Security boundaries and honest limits
 
@@ -177,4 +210,4 @@ npm run typecheck
 npm run build
 ```
 
-Browser smoke tests have launched all 29 apps, exercised calculator/terminal/persistence, window drag/resize/snap/workspaces/UI scaling, Start search, NPK build/install/uninstall, HTML5 bridge storage and permission denial, media import/export, WASM controls, ronimCanvas pen/SVG export, and empty Photo Viewer. A production preview was also reloaded fully offline and launched a lazy-loaded app from the service-worker cache. Weather/proxy outbound access depends on the deployment environment.
+Browser smoke tests have launched the built-in apps and exercised calculator/terminal/persistence, window geometry, workspaces, Start search, NPK build/install/uninstall, HTML5 bridge permissions, media import/export, WASM controls, and ronimCanvas. The customization pass also verified `.nif` wallpaper loading, glass taskbar settings, Start-to-desktop drag/drop, pin/remove/unpin, desktop XML import, the ronim-js desktop/app bridge, and Direct-mode JS/CSS execution. Weather/proxy outbound access depends on the deployment environment.

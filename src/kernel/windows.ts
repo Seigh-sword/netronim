@@ -7,7 +7,7 @@ export const TASKBAR_HEIGHT = 58;
 export class WindowManager {
   private nextID = 1; private topZ = 10; private saveTimer?: ReturnType<typeof setTimeout>;
   constructor(private bus: EventBus) { bus.on('window:changed', () => this.save()); }
-  get workArea() { return { width: window.innerWidth, height: window.innerHeight - TASKBAR_HEIGHT }; }
+  get workArea() { const taskbar = osStore.getState().settings.taskbar; const reserved = taskbar.autoHide ? 0 : TASKBAR_HEIGHT; return { width: window.innerWidth, height: Math.max(240, window.innerHeight - reserved) }; }
   open(process: ProcessInfo, manifest: AppManifest, filePath?: string, restored?: OSWindow): OSWindow {
     const area = this.workArea;
     const sizes: Record<string, [number, number]> = { welcome: [820, 550], calculator: [410, 580], clock: [760, 570], about: [760, 650], settings: [980, 680], terminal: [900, 590], browser: [1100, 720], canvas: [1120, 720], sketchbook: [1060, 690], files: [1000, 650], camera: [780, 620], recorder: [780, 570] };

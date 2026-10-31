@@ -1,5 +1,5 @@
 import { db, openDB } from './db';
-import { osStore, DEFAULT_SETTINGS } from './store';
+import { osStore, mergeSettings } from './store';
 import { EventBus } from './bus';
 import { FileSystem } from './fs';
 import { ProcessManager } from './processes';
@@ -33,7 +33,7 @@ export class Kernel {
     try {
       await stage('Opening persistent IndexedDB volume', 10, openDB);
       const saved = await db.get<{ key: string; value: Partial<Settings> }>('kv', 'settings');
-      osStore.setState({ settings: { ...DEFAULT_SETTINGS, ...saved?.value } });
+      osStore.setState({ settings: mergeSettings(saved?.value) });
       const logs = await db.all<LogEntry & { key: number }>('logs');
       osStore.setState({ logs: logs.sort((a,b) => b.id-a.id).slice(0,300) });
       await stage('Mounting virtual file system', 24, () => this.fs.init());

@@ -10,8 +10,8 @@ export interface VNode {
   mode: number; owner: string;
 }
 export interface FileRecord extends VNode { data?: Blob }
-export type Permission = 'fs:read' | 'fs:write' | 'network' | 'clipboard' | 'notifications' | 'camera' | 'microphone' | 'processes';
-export const PERMISSIONS: Permission[] = ['fs:read','fs:write','network','clipboard','notifications','camera','microphone','processes'];
+export type Permission = 'fs:read' | 'fs:write' | 'network' | 'clipboard' | 'notifications' | 'camera' | 'microphone' | 'processes' | 'desktop:read' | 'desktop:write' | 'apps:launch' | 'apps:manage';
+export const PERMISSIONS: Permission[] = ['fs:read','fs:write','network','clipboard','notifications','camera','microphone','processes','desktop:read','desktop:write','apps:launch','apps:manage'];
 export interface AppManifest {
   id: string; name: string; version: string; author: string; description: string;
   icon: string; color: string; type: 'rendygl' | 'html5view';
@@ -37,6 +37,11 @@ export interface OSWindow extends Rect {
   minimized: boolean; maximized: boolean; z: number; workspace: number;
   filePath?: string; restore?: Rect;
 }
+export interface TaskbarSettings {
+  position: 'bottom' | 'top'; glass: boolean; opacity: number; blur: number;
+  iconSize: number; align: 'left' | 'center'; autoHide: boolean;
+  showSearch: boolean; showWorkspaces: boolean; showTray: boolean;
+}
 export interface Settings {
   username: string; wallpaper: string; theme: 'dark' | 'light'; accent: string;
   volume: number; brightness: number; uiScale: number; reduceMotion: boolean;
@@ -44,6 +49,8 @@ export interface Settings {
   processLimit: number; updateEndpoint: string; updateChannel: 'stable' | 'preview';
   proxyEndpoint: string; iconPositions: Record<string, { x: number; y: number }>;
   onboardingComplete: boolean; showDesktopIcons: boolean;
+  taskbar: TaskbarSettings; taskbarPinned: string[]; desktopShortcuts: string[];
+  desktopIconSize: number; desktopGrid: number; desktopShowLabels: boolean;
 }
 export interface LogEntry { id: number; time: number; level: 'info' | 'warn' | 'error'; source: string; message: string }
 export interface Notification { id: string; title: string; message: string; time: number; appId?: string; read: boolean }

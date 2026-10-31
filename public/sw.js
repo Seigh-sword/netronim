@@ -21,7 +21,7 @@ self.addEventListener('fetch', event => {
     }).catch(() => caches.match('/index.html', { ignoreVary: true }).then(cached => cached || Response.error())));
     return;
   }
-  if (/\.(?:js|css|svg|png|jpg|webp|wasm|woff2?)$/.test(url.pathname)) {
+  if (/\.(?:js|css|svg|png|jpg|webp|nif|wasm|woff2?)$/.test(url.pathname)) {
     event.respondWith(caches.match(request, { ignoreVary: true }).then(cached => {
       if (cached) { const headers = new Headers(cached.headers); headers.set('Access-Control-Allow-Origin', '*'); return new Response(cached.body, { status: cached.status, statusText: cached.statusText, headers }); }
       return caches.open(CACHE).then(cache => fetch(request).then(response => { if (response.ok) cache.put(request, response.clone()); return response; }));
