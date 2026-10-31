@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "netronim",
+  "compatibility_date": "2026-10-30",
+  "pages_build_output_dir": "./dist",
+  "vars": {
+    "PROXY_ENABLED": "true"
+    // Optional hard allowlist, comma-separated hostnames:
+    // "PROXY_ALLOWED_HOSTS": "example.com,docs.example.com"
+  }
+}

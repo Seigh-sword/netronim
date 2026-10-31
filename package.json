@@ -1,0 +1,36 @@
+{
+  "name": "netronim-os",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "npm run build:wasm && npm run typecheck && vite build && node scripts/build-sw.mjs",
+    "build:wasm": "node scripts/build-wasm.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "test": "vitest run",
+    "typecheck": "tsc -b && tsc -p functions/tsconfig.json",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name netronim",
+    "dev:cloudflare": "npm run build && wrangler pages dev dist --ip 0.0.0.0"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261023.1",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "@webgpu/types": "^0.1.74",
+    "fake-indexeddb": "^6.0.0",
+    "typescript": "~5.7.3",
+    "vite": "^6.2.0",
+    "vitest": "^5.0.5",
+    "wabt": "^1.0.36",
+    "wrangler": "^4.6.0"
+  }
+}

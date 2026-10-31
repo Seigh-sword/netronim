@@ -1,0 +1,13 @@
+{
+  "version": "1.0.0",
+  "channel": "stable",
+  "date": "2026-10-30",
+  "notes": [
+    "A modular browser-native kernel and persistent IndexedDB file system.",
+    "29 built-in apps, isolated HTML5View, and RendyGL WebAssembly graphics.",
+    "NPK packages, native media formats, workspaces, and a first-class terminal.",
+    "Cloudflare-ready website reader, live weather, and verified update manifests."
+  ],
+  "packages": [],
+  "shellReload": false
+}

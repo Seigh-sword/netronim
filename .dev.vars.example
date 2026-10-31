@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `wrangler pages dev` (never commit real secrets).
+PROXY_ENABLED=true
+# PROXY_ALLOWED_HOSTS=example.com,docs.example.com
